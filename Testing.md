@@ -11,32 +11,31 @@ However, the threshold is **certainly above 12.5 A**.
 
 ### Required Maximum Delay @ 50 VDC
 
-- \( I_{trip} = 13 A \)
-- \( I_{max} = 260 A @ 300 µs \)
+- I<sub>trip</sub> = 13 A
+- I<sub>max</sub> = 260 A @ 300 µs
 
-\[
-\frac{dI}{dt} = \frac{V_{DC}}{L} = 22 A/µs
-\]
+$$
+\frac{dI}{dt} = \frac{V_{DC}}{L} = 22 \tfrac{A}{µs}
+$$
 
-\[
-t_d = \frac{I_{max} - I_{trip}}{dI/dt} = \frac{240 A}{22 A/µs} = 10 µs
-\]
+$$
+t_{pd, max} = \frac{I_{max} - I_{trip}}{dI/dt} = \frac{240 A}{22 A/µs} = 10 µs
+$$
 
 > **Note:**  
 > This calculation assumes constant inductance (**L**).  
 > However, **L decreases with saturation (~7 A)**, making the OCP potentially **useless or too slow**.
 
 > **Reference:**  
-> Short Circuit Withstand Times for various EPC devices were evaluated in the referenced paper.  
-> All measured withstand times were **> 5 µs**.
+> Short Circuit Withstand Times for various EPC devices were evaluated [here](https://epc-co.com/epc/portals/0/epc/documents/product-training/Reliability%20Report%20Phase%2011.pdf). All measured withstand times were **> 5µs**.
 
 ---
 
 ## Theoretical Delay Breakdown
 
-| Component | Bandwidth / Spec | Delay (td) |
+| Component | Bandwidth / Spec | Delay (t<sub>pd</sub>) |
 |------------|------------------|------------|
-| Current Sensor | 1 MHz | 0.8 µs (5 τ) |
+| Current Sensor | 1 MHz | 0.8 µs (5τ) |
 | Differential Amplifier | GBW = 1 MHz | 0.8 µs |
 | Non-Inverting Amplifier | BW = 10 MHz | 0.08 µs |
 | Comparator | With deglitch capacitor | 1 µs |
@@ -47,9 +46,9 @@ t_d = \frac{I_{max} - I_{trip}}{dI/dt} = \frac{240 A}{22 A/µs} = 10 µs
 
 **→ Total theoretical delay:**
 
-\[
-t_{d,tot} ≈ 1.75 µs
-\]
+
+t<sub>pd,tot</sub> ≈ 1.75 µs
+
 
 ---
 
@@ -57,10 +56,7 @@ t_{d,tot} ≈ 1.75 µs
 
 ### Without Exact Threshold Measurement
 Measure **propagation delay** from **after the comparator** to **gate-low**,  
-then **add theoretical delay**.
-
-### With Exact Threshold Measurement
-Measure from **current step** to **gate-low**.
+then **add theoretical delay**. The Tests are performed **after removing the deglitch capacitor**.
 
 ---
 
@@ -86,8 +82,10 @@ Measure from **current step** to **gate-low**.
 - Load: nearly constant (essentially a short circuit)  
 - Reference step: **3 A**  
 - Controller gains:  
-  - \( K_P = 0.01 \)  
-  - \( K_I = 1 \)
+  - K<sub>P</sub> = 0.01
+  - K<sub>I</sub> = 1
+
+![Precharge Tracking](./Graphics/Tracking.png)
 
 ### Observations
 
@@ -133,12 +131,20 @@ Same setup as used for **Precharge Tracking**.
 
 ## Continuous Bypass Thermal
 
-*(Section not yet detailed.)*
+### Setup
+A large resistive load (~1Ω) was connected at the output terminal. Then, the bypass FETs are closed and current starts flowing. The temperature is measured using a FLIR camera. No cooler is used.
+
+### Results
+At a continuous current of  15A, the temperature settles at ~65°C. At 20A, the temperature quickly rises above 100°C. So, for continuous bypass at >20A, a cooler is needed.
 
 ---
+## Isolation Test
+### Procedure
+Use Insulation Tester at inceasing Voltages between the two isolated GNDs. For each voltage (125V, 250V, 500V, 1kV), the insulation voltage is applied for 5s. At 1kV, a continuous test of 1min is also performed.
+### Results
+For each of the tested Voltages, the Insulation Resistance stays at **>2MΩ**. For the continuous test, the insulation resistance never decreased below **1.7MΩ**.
+
 
 ## Possibly Destructive Tests
-
-- Startup sequence (**PWR before CTRL**)  
-- Isolation  
+- Startup sequence (**PWR before CTRL**)
 - Maximum input voltage
