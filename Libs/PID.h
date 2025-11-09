@@ -9,11 +9,11 @@
 
 #define PERIOD 1E-5f //10us
 #define KP 0.01f
-#define KI .10f
+#define KI 1.0f
 #define KD 0.00f
 #define OUTPUT_MIN_I 0.0f
 #define OUTPUT_MAX_I 1.0f
-#define CURRENT_SETPOINT 3.0f
+#define CURRENT_SETPOINT 0.50f
 
 typedef struct {
     float Kp;       // Proportional gain

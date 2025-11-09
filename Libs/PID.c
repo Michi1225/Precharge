@@ -84,10 +84,6 @@ void controller_start()
 
 void controller_run()
 {
-    // Testing:
-    bypass = 1;
-    TIM3->CCR4 = 0;
-    HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
 
 
 

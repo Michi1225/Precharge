@@ -114,11 +114,9 @@ int main(void)
   HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET); //TODO: invert logic (LED ON = DONE LOW)
 
   
-  HAL_GPIO_WritePin(nCLR_BP_GPIO_Port, nCLR_BP_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(nCLR_PC_GPIO_Port, nCLR_PC_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
   HAL_Delay(9);
-  HAL_GPIO_WritePin(nCLR_BP_GPIO_Port, nCLR_BP_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(nCLR_PC_GPIO_Port, nCLR_PC_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
 
 
   while (1)
@@ -126,42 +124,39 @@ int main(void)
     if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
       HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
       controller_stop();
+      HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
     }else{
       HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
       controller_start();
+      // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
     }
 
     //ESTOP Clear
     if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
     {
       HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
-      HAL_GPIO_WritePin(nCLR_BP_GPIO_Port, nCLR_BP_Pin, GPIO_PIN_RESET);
-      HAL_GPIO_WritePin(nCLR_PC_GPIO_Port, nCLR_PC_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
     }else{
       HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
-      HAL_GPIO_WritePin(nCLR_BP_GPIO_Port, nCLR_BP_Pin, GPIO_PIN_SET);
-      HAL_GPIO_WritePin(nCLR_PC_GPIO_Port, nCLR_PC_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
     }
 
 
     //OC LEDs
-    if(HAL_GPIO_ReadPin(OC_BP_GPIO_Port, OC_BP_Pin) == GPIO_PIN_SET)
+    if(HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin) == GPIO_PIN_SET)
     {
-      HAL_GPIO_WritePin(OC_BP_OUT_GPIO_Port, OC_BP_OUT_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_RESET);
     }else{
-      HAL_GPIO_WritePin(OC_BP_OUT_GPIO_Port, OC_BP_OUT_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_SET);
     }
-    if(HAL_GPIO_ReadPin(OC_PC_GPIO_Port, OC_PC_Pin) == GPIO_PIN_SET)
-    {
-      HAL_GPIO_WritePin(OC_PC_OUT_GPIO_Port, OC_PC_OUT_Pin, GPIO_PIN_RESET);
-    }else{
-      HAL_GPIO_WritePin(OC_PC_OUT_GPIO_Port, OC_PC_OUT_Pin, GPIO_PIN_SET);
-    }
-
 
     float current = cs_get_pc_current();
+    // float bp_current = cs_get_bp_current();
+    float duty_cycle = ((float)TIM3->CCR4) / 169.0f;
+    memcpy(&(ITM->PORT[1].u32), &duty_cycle, sizeof(duty_cycle));
+    // memcpy(&(ITM->PORT[1].u32), &bp_current, sizeof(bp_current));
     memcpy(&(ITM->PORT[0].u32), &current, sizeof(current));
-    HAL_Delay(0);
+    HAL_Delay(2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
