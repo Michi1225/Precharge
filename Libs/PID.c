@@ -59,11 +59,6 @@ void PID_Reset(PIDController *pid)
 }
 
 
-/**
- * @brief  Initialize the controller.
- * @param  None
- * @retval None
- */
 void controller_init()
 {
     run = 0;
@@ -71,6 +66,17 @@ void controller_init()
     PID_SetSetpoint(&current_controller, CURRENT_SETPOINT);
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
     TIM3->CCR4 = 0;
+
+    //Reset OC latch
+    HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
+    HAL_Delay(9);
+    HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
+
+    //Controller ready
+    HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //TODO: invert logic (LED ON = DONE LOW)
+    HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET); //TODO: invert logic (LED ON = DONE LOW)
+  
+    
 }
 
 void controller_start()
@@ -92,6 +98,7 @@ void controller_run()
     {
         float d = PID_Compute(&current_controller, cs_get_pc_current(), PERIOD);
         TIM3->CCR4 = (uint32_t)(d * 169.0f);
+        //TODO: Handover to bypass logic
         // if(d > HANDOVER_THRESHOLD) // Enter bypass mode if output exceeds threshold
         // {
         //     //Set bypass mode

@@ -1,7 +1,7 @@
 #pragma once
 #include "main.h"
 
-#define SWO_SPEED 1E6 // 10Mhz
+#define SWO_SPEED 2E6 // 10Mhz
 #define ENABLE_PORT0 1
 #define ENABLE_PORT1 1
 #define ENABLE_PORT2 0

@@ -110,13 +110,7 @@ int main(void)
   SWD_Init();
   cs_init();
   controller_init();
-  HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //TODO: invert logic (LED ON = DONE LOW)
-  HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET); //TODO: invert logic (LED ON = DONE LOW)
 
-  
-  HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
-  HAL_Delay(9);
-  HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
 
 
   while (1)
@@ -142,7 +136,7 @@ int main(void)
     }
 
 
-    //OC LEDs
+    //OC LED
     if(HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin) == GPIO_PIN_SET)
     {
       HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_RESET);
@@ -150,13 +144,12 @@ int main(void)
       HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_SET);
     }
 
+    //DEBUG SWO OUTPUT
+    float current_bp = cs_get_bp_current();
+    memcpy(&(ITM->PORT[1].u32), &current_bp, sizeof(current_bp));
     float current = cs_get_pc_current();
-    // float bp_current = cs_get_bp_current();
-    float duty_cycle = ((float)TIM3->CCR4) / 169.0f;
-    memcpy(&(ITM->PORT[1].u32), &duty_cycle, sizeof(duty_cycle));
-    // memcpy(&(ITM->PORT[1].u32), &bp_current, sizeof(bp_current));
     memcpy(&(ITM->PORT[0].u32), &current, sizeof(current));
-    HAL_Delay(2);
+    for(int i = 0; i < 5000; i++);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -216,6 +209,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   {
     controller_run();
   }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    if(hadc->Instance == ADC2)
+    {
+        set_Imon();
+    }
 }
 /* USER CODE END 4 */
 

@@ -22,6 +22,9 @@ HAL_StatusTypeDef cs_init()
     if(HAL_ADC_Start_DMA(&hadc2, &cd_bp_raw, 1) != HAL_OK) return HAL_ERROR;
     if(HAL_ADC_Start_DMA(&hadc3, &vrefint_raw, 1) != HAL_OK) return HAL_ERROR;
     HAL_Delay(100); // Allow some time for initial readings
+
+
+    //Average multiple samples to determine zero-current offset
     uint64_t offset_pc_avg = 0;
     uint64_t offset_bp_avg = 0;
     const uint32_t samples = 100;
@@ -36,19 +39,15 @@ HAL_StatusTypeDef cs_init()
     zero_offset_pc = offset_pc_avg; // Capture zero-current offset
     zero_offset_bp = offset_bp_avg; // Capture zero-current offset
 
+
+    // Set initial DAC output to zero
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, 0);
+    //Start DAC
+    if(HAL_DAC_Start(&hdac1, DAC_CHANNEL_2) != HAL_OK) return HAL_ERROR;
+
     return HAL_OK;
 }
 
-// Only used in discountinuous mode
-void cs_run()
-{
-    adc_toggle ^= 1;
-    if (adc_toggle)
-    {
-        HAL_ADC_Start_DMA(&hadc1, &cs_pc_raw, 1);
-    }
-    
-}
 
 float cs_get_pc_current()
 {
@@ -76,3 +75,24 @@ uint32_t cs_get_pc_raw()
 {
     return cs_pc_raw;
 }
+
+void set_Imon()
+{
+    // --- constants ---
+    const uint32_t ADC_40A = 39718u;  // ADC code ≈ 2.0V at 0.05 V/A with Vref=3.3V
+    const uint32_t DAC_MAX = 4095u;   // 12-bit DAC full scale
+
+    //ADC read processing
+    uint32_t cs_bp_corrected = cd_bp_raw & 0xFFFF;  // 16-bit raw ADC
+    cs_bp_corrected = (cs_bp_corrected > zero_offset_bp)
+                        ? (cs_bp_corrected - zero_offset_bp)
+                        : 0; // zero-offset correction
+
+    // --- scaling 16-bit corrected ADC to 12-bit DAC (0..40A maps to 0..4095) ---
+    uint32_t dac_val = (cs_bp_corrected * DAC_MAX + (ADC_40A/2)) / ADC_40A;
+    if (dac_val > DAC_MAX) dac_val = DAC_MAX;
+
+    // --- output to DAC channel 1 (right aligned 12-bit) ---
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dac_val);
+}
+

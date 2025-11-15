@@ -163,6 +163,7 @@ Mcu.UserName=STM32G4A1KEUx
 MxCube.Version=6.14.1
 MxDb.Version=DB.6.0.141
 NVIC.BusFault_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:false
+NVIC.DMA1_Channel2_IRQn=true\:1\:0\:true\:false\:true\:true\:true\:true
 NVIC.DebugMonitor_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:false
 NVIC.ForceEnableDMAVector=false
 NVIC.HardFault_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:false

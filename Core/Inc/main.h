@@ -47,6 +47,7 @@ extern ADC_HandleTypeDef hadc3;
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
+extern DAC_HandleTypeDef hdac1;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
