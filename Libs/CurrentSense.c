@@ -80,7 +80,8 @@ void set_Imon()
 {
     // --- constants ---
     const uint32_t ADC_40A = 39718u;  // ADC code ≈ 2.0V at 0.05 V/A with Vref=3.3V
-    const uint32_t DAC_MAX = 4095u;   // 12-bit DAC full scale
+    const uint32_t DAC_MIN = 250u;
+    const uint32_t DAC_MAX = 4095u - 250u;   // 12-bit DAC full scale
 
     //ADC read processing
     uint32_t cs_bp_corrected = cd_bp_raw & 0xFFFF;  // 16-bit raw ADC
@@ -89,8 +90,9 @@ void set_Imon()
                         : 0; // zero-offset correction
 
     // --- scaling 16-bit corrected ADC to 12-bit DAC (0..40A maps to 0..4095) ---
-    uint32_t dac_val = (cs_bp_corrected * DAC_MAX + (ADC_40A/2)) / ADC_40A;
-    if (dac_val > DAC_MAX) dac_val = DAC_MAX;
+    uint32_t dac_val = cs_bp_corrected * (DAC_MAX - DAC_MIN) / ADC_40A + DAC_MIN;
+    if(dac_val > DAC_MAX) dac_val = DAC_MAX;
+    if(dac_val < DAC_MIN) dac_val = DAC_MIN;
 
     // --- output to DAC channel 1 (right aligned 12-bit) ---
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dac_val);

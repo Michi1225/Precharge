@@ -118,7 +118,6 @@ int main(void)
     if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
       HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
       controller_stop();
-      HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
     }else{
       HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
       controller_start();
@@ -139,14 +138,14 @@ int main(void)
     //OC LED
     if(HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin) == GPIO_PIN_SET)
     {
-      HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_RESET);
-    }else{
       HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_SET);
+    }else{
+      HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_RESET);
     }
 
     //DEBUG SWO OUTPUT
-    float current_bp = cs_get_bp_current();
-    memcpy(&(ITM->PORT[1].u32), &current_bp, sizeof(current_bp));
+    float current_bp = TIM3->CCR4 / 169.0f;
+    memcpy(&(ITM->PORT[1].u8), &bypass, sizeof(bypass));
     float current = cs_get_pc_current();
     memcpy(&(ITM->PORT[0].u32), &current, sizeof(current));
     for(int i = 0; i < 5000; i++);

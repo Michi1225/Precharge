@@ -9,7 +9,9 @@ PIDController current_controller =
     .integral = 0.0f,
     .prevError = 0.0f,
     .outputMin = OUTPUT_MIN_I,
-    .outputMax = OUTPUT_MAX_I
+    .outputMax = OUTPUT_MAX_I,
+    .handover_counter = 0,
+    .wd_counter = 0
 };
 
 uint8_t run = 0;
@@ -56,6 +58,8 @@ void PID_Reset(PIDController *pid)
 {
     pid->integral = 0.0f;
     pid->prevError = 0.0f;
+    pid->wd_counter = 0;
+    pid->handover_counter = 0;
 }
 
 
@@ -73,8 +77,8 @@ void controller_init()
     HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
 
     //Controller ready
-    HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //TODO: invert logic (LED ON = DONE LOW)
-    HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET); //TODO: invert logic (LED ON = DONE LOW)
+    HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //RDY is now WD TIMEOUT
+    HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
   
     
 }
@@ -98,19 +102,30 @@ void controller_run()
     {
         float d = PID_Compute(&current_controller, cs_get_pc_current(), PERIOD);
         TIM3->CCR4 = (uint32_t)(d * 169.0f);
-        //TODO: Handover to bypass logic
-        // if(d > HANDOVER_THRESHOLD) // Enter bypass mode if output exceeds threshold
-        // {
-        //     //Set bypass mode
-        //     bypass = 1;
-        //     HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
-        //     HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET); //TODO: invert logic (LED ON = DONE LOW)
+        if(TIM3->CCR4 == 169) ++current_controller.handover_counter;
+        else current_controller.handover_counter = 0;
+        if(current_controller.handover_counter > HANDOVER_THRESHOLD) // Enter bypass mode if output exceeds threshold
+        {
+            //Set bypass mode
+            bypass = 1;
+            HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET);
 
-        //     //Disable controller
-        //     HAL_TIM_Base_Stop_IT(&htim1);
-        //     TIM3->CCR4 = 0;
-        //     PID_Reset(&current_controller);
-        // }
+            //Disable controller
+            HAL_TIM_Base_Stop_IT(&htim1);
+            TIM3->CCR4 = 0;
+            PID_Reset(&current_controller);
+        }
+        ++current_controller.wd_counter;
+        if(current_controller.wd_counter > WD_TIMEOUT)
+        {
+            //Disable controller
+            HAL_TIM_Base_Stop_IT(&htim1);
+            TIM3->CCR4 = 0;
+            PID_Reset(&current_controller);
+            //TODO: Indicate fault
+            HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_SET); // RDY is now WD TIMEOUT
+        }
         return;
     }
 }
@@ -128,6 +143,7 @@ void controller_stop()
         //Stop Bypass
         bypass = 0;
         HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET); //TODO: invert logic (LED ON = DONE LOW)
+        HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); // RDY is now WD TIMEOUT
     }
 }

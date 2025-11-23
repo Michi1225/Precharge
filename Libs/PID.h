@@ -5,7 +5,8 @@
 
 #define ENABLE_PID
 
-#define HANDOVER_THRESHOLD 1000.0f // Threshold to switch to bypass mode
+#define HANDOVER_THRESHOLD 5000 // Threshold to switch to bypass mode, 50ms
+#define WD_TIMEOUT 100000
 
 #define PERIOD 1E-5f //10us
 #define KP 0.01f
@@ -24,6 +25,8 @@ typedef struct {
     float prevError;// Previous error value
     float outputMin;// Minimum output limit
     float outputMax;// Maximum output limit
+    uint32_t handover_counter;
+    uint32_t wd_counter;
 } PIDController;
 
 
