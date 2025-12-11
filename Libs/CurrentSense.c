@@ -79,7 +79,7 @@ uint32_t cs_get_pc_raw()
 void set_Imon()
 {
     // --- constants ---
-    const uint32_t ADC_40A = 39718u;  // ADC code ≈ 2.0V at 0.05 V/A with Vref=3.3V
+    const uint32_t ADC_60A = 59605u;  // ADC code ≈ 3.0V at 0.05 V/A with Vref=3.3V
     const uint32_t DAC_MIN = 250u;
     const uint32_t DAC_MAX = 4095u - 250u;   // 12-bit DAC full scale
 
@@ -89,8 +89,8 @@ void set_Imon()
                         ? (cs_bp_corrected - zero_offset_bp)
                         : 0; // zero-offset correction
 
-    // --- scaling 16-bit corrected ADC to 12-bit DAC (0..40A maps to 0..4095) ---
-    uint32_t dac_val = cs_bp_corrected * (DAC_MAX - DAC_MIN) / ADC_40A + DAC_MIN;
+    // --- scaling 16-bit corrected ADC to 12-bit DAC (0..60A maps to 0..4095) ---
+    uint32_t dac_val = cs_bp_corrected * (DAC_MAX - DAC_MIN) / ADC_60A + DAC_MIN;
     if(dac_val > DAC_MAX) dac_val = DAC_MAX;
     if(dac_val < DAC_MIN) dac_val = DAC_MIN;
 
