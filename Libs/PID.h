@@ -6,7 +6,7 @@
 #define ENABLE_PID
 
 #define HANDOVER_THRESHOLD 5000 // Threshold to switch to bypass mode, 50ms
-#define WD_TIMEOUT 100000
+#define WD_TIMEOUT 300000
 
 #define PERIOD 1E-5f //10us
 #define KP 0.01f
@@ -14,7 +14,7 @@
 #define KD 0.00f
 #define OUTPUT_MIN_I 0.0f
 #define OUTPUT_MAX_I 1.0f
-#define CURRENT_SETPOINT 3.0f // Target precharge current in Amperes
+#define CURRENT_SETPOINT 3.5f // Target precharge current in Amperes
 
 typedef struct {
     float Kp;       // Proportional gain
