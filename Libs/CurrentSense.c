@@ -14,11 +14,9 @@ volatile uint8_t adc_toggle = 0;
 
 HAL_StatusTypeDef cs_init()
 {
-    if(HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK) return HAL_ERROR;
     if(HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED) != HAL_OK) return HAL_ERROR;
     if(HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED) != HAL_OK) return HAL_ERROR;
     HAL_Delay(1); // Wait for ADC to stabilize after calibration
-    if(HAL_ADC_Start_DMA(&hadc1, &cs_pc_raw, 1) != HAL_OK) return HAL_ERROR;
     if(HAL_ADC_Start_DMA(&hadc2, &cd_bp_raw, 1) != HAL_OK) return HAL_ERROR;
     if(HAL_ADC_Start_DMA(&hadc3, &vrefint_raw, 1) != HAL_OK) return HAL_ERROR;
     HAL_Delay(100); // Allow some time for initial readings

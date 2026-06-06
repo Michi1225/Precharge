@@ -19,8 +19,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "crc.h"
 #include "dac.h"
 #include "dma.h"
+#include "i2c.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -30,6 +32,7 @@
 #include "PID.h"
 #include "swo.h"
 #include <string.h>
+#include "comm.h"
 
 /* USER CODE END Includes */
 
@@ -95,12 +98,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
   MX_DAC1_Init();
   MX_ADC3_Init();
+  MX_I2C2_Init();
+  MX_TIM4_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -109,50 +114,66 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   SWD_Init();
   cs_init();
-  controller_init();
+  // controller_init();
+  comm_init();
 
 
 
   while (1)
   {
-    if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
-      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-      controller_stop();
-    }else{
+    ITM->PORT[0].u16 = commHandler.inputMemMap.input_registers.tracking_current; // Debug: Indicate current I2C communication state, adjust as needed
+
+    if(commHandler.inputMemMap.input_registers.tracking_current > 0x7F)
+    {
       HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-      controller_start();
-      // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
-    }
-
-    //ESTOP Clear
-    if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
-    {
-      HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
-      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
     }else{
-      HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
-      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
     }
 
+    HAL_Delay(0);
 
-    //OC LED
-    if(HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin) == GPIO_PIN_SET)
-    {
-      HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_SET);
-      controller_stop();
-    }else{
-      HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_RESET);
-    }
 
-    //DEBUG SWO OUTPUT
-    float current_bp = TIM3->CCR4 / 169.0f;
-    memcpy(&(ITM->PORT[1].u8), &bypass, sizeof(bypass));
-    float current = cs_get_pc_current();
-    memcpy(&(ITM->PORT[0].u32), &current, sizeof(current));
-    for(int i = 0; i < 5000; i++);
+    // if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
+    //   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+    //   controller_stop();
+    // }else{
+    //   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    //   controller_start();
+    //   // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
+    // }
+
+    // //ESTOP Clear
+    // if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
+    // {
+    //   HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
+    //   HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
+    // }else{
+    //   HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
+    //   HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
+    // }
+
+
+    // //OC LED
+
+    // if(HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin) == GPIO_PIN_SET)
+    // {
+    //   // HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_SET);
+    //   HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+    //   //TODO: Set OC flag for I2C register
+    //   controller_stop();
+    // }
+
+    // //DEBUG SWO OUTPUT
+    // float current_bp = TIM3->CCR4 / 169.0f;
+    // memcpy(&(ITM->PORT[1].u8), &bypass, sizeof(bypass));
+    // float current = cs_get_pc_current();
+    // memcpy(&(ITM->PORT[0].u32), &current, sizeof(current));
+    // for(int i = 0; i < 5000; i++);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
@@ -251,4 +272,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-

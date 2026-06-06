@@ -77,9 +77,9 @@ void controller_init()
     HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
 
     //Controller ready
-    HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //RDY is now WD TIMEOUT
-    HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
-  
+    // HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //RDY is now WD TIMEOUT
+    // HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
+    //TODO: Set those flags in I2C register instead of GPIO
     
 }
 
@@ -109,7 +109,8 @@ void controller_run()
             //Set bypass mode
             bypass = 1;
             HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET);
+            // HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_SET);
+            //TODO: Set DONE flag for I2C register
 
             //Disable controller
             HAL_TIM_Base_Stop_IT(&htim1);
@@ -124,7 +125,8 @@ void controller_run()
             TIM3->CCR4 = 0;
             PID_Reset(&current_controller);
             //TODO: Indicate fault
-            HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_SET); // RDY is now WD TIMEOUT
+            // HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_SET); // RDY is now WD TIMEOUT
+            //TODO: Set WD timeout flag for I2C register
         }
         return;
     }
@@ -143,7 +145,8 @@ void controller_stop()
         //Stop Bypass
         bypass = 0;
         HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); // RDY is now WD TIMEOUT
+        // HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
+        // HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); // RDY is now WD TIMEOUT
+        //TODO: Reset those flags in I2C register instead of GPIO
     }
 }

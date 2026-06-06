@@ -48,6 +48,10 @@ extern ADC_HandleTypeDef hadc3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 extern DAC_HandleTypeDef hdac1;
+
+extern I2C_HandleTypeDef hi2c2;
+
+extern CRC_HandleTypeDef hcrc;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -71,18 +75,14 @@ void Error_Handler(void);
 #define nCLR_OC_GPIO_Port GPIOA
 #define DRV_BP_Pin GPIO_PIN_2
 #define DRV_BP_GPIO_Port GPIOA
-#define CS_PC_Pin GPIO_PIN_3
-#define CS_PC_GPIO_Port GPIOA
-#define IMON_Pin GPIO_PIN_5
-#define IMON_GPIO_Port GPIOA
+#define OC_Setpoint_Pin GPIO_PIN_4
+#define OC_Setpoint_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_6
 #define LED_GPIO_Port GPIOA
-#define RDY_Pin GPIO_PIN_8
-#define RDY_GPIO_Port GPIOA
-#define DONE_Pin GPIO_PIN_9
-#define DONE_GPIO_Port GPIOA
-#define OC_OUT_Pin GPIO_PIN_10
-#define OC_OUT_GPIO_Port GPIOA
+#define INT_Pin GPIO_PIN_10
+#define INT_GPIO_Port GPIOA
+#define ALERT_Pin GPIO_PIN_11
+#define ALERT_GPIO_Port GPIOA
 #define nEN_Pin GPIO_PIN_12
 #define nEN_GPIO_Port GPIOA
 #define ESTOP_Pin GPIO_PIN_15

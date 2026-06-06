@@ -21,8 +21,6 @@ endif()
 # Set the project name
 set(CMAKE_PROJECT_NAME Precharge)
 
-# Include toolchain file
-include("cmake/gcc-arm-none-eabi.cmake")
 
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
@@ -50,6 +48,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     ${CMAKE_SOURCE_DIR}/Libs/CurrentSense.c
     ${CMAKE_SOURCE_DIR}/Libs/PID.c
+    ${CMAKE_SOURCE_DIR}/Libs/comm.c
 )
 
 # Add include paths
