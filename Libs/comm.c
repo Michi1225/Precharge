@@ -93,19 +93,28 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
     if (hi2c == &I2C_HANDLER) // Check if it's the correct I2C instance
     {
         // Restart listening for new I2C communication
-        commState = MASTER_REG; // Reset to expect register address again
-
-        // Validate receive Data & copy to register if valid
-        uint32_t crc = HAL_CRC_Calculate(&hcrc, &input_data_raw[currentRegister], rxcnt - 1); // Example CRC calculation, adjust as needed
-        if((crc & 0x000000FF) == input_data_raw[currentRegister + rxcnt - 1]) // Dummy validation
+        
+        if(commState == MASTER_WRITE) // Just finished receiving data from master
         {
-            for(int index = currentRegister; index < currentRegister + rxcnt; ++index)
+            // Validate receive Data & copy to register if valid
+            uint32_t crc = HAL_CRC_Calculate(&hcrc, &input_data_raw[currentRegister], rxcnt - 1); // Example CRC calculation, adjust as needed
+            if((crc & 0x000000FF) == input_data_raw[currentRegister + rxcnt - 1]) // Dummy validation
             {
-                // Update the corresponding register value based on received data
-                // This is where you would parse input_data_raw and update your inputMemMap accordingly
-                commHandler.inputMemMap.raw_input_data[index] = input_data_raw[index];
+                for(int index = currentRegister; index < currentRegister + rxcnt; ++index)
+                {
+                    // Update the corresponding register value based on received data
+                    // This is where you would parse input_data_raw and update your inputMemMap accordingly
+                    commHandler.inputMemMap.raw_input_data[index] = input_data_raw[index];
+                }
             }
         }
+        else if(commState == MASTER_READ) // Just finished transmitting data to master
+        {
+            // You can perform any necessary actions after transmission if needed
+            if(currentRegister == PC_STATUS_REG) 
+                HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET); // Master has read 
+        }
+        commState = MASTER_REG; // Reset to expect register address again
         rxcnt = 0; // Reset received byte count for next communication
 
         HAL_I2C_EnableListen_IT(hi2c);

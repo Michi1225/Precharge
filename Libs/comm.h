@@ -8,10 +8,17 @@
 
 #define I2C_HANDLER hi2c2
 
-#define MAX_READ_ADDR 0x07 // Maximum valid register address for reading, adjust as needed
-#define MAX_WRITE_ADDR 0x04 // Maximum valid register address for writing, adjust as needed
+#define MAX_READ_ADDR 0x19 // Maximum valid register address for reading, adjust as needed
+#define MAX_WRITE_ADDR 0x10 // Maximum valid register address for writing, adjust as needed
 
-
+#define PC_STATUS_REG 0x00
+#define PC_LAST_PC_TIME_REG 0x01
+#define PC_MAX_PC_CURRENT 0x05
+#define PC_MAX_BP_CURRENT 0x09
+#define PC_SETPOINT_REG 0x0D
+#define PC_TIMEOUT_REG 0x11
+#define PC_VOLTAGE_REG 0x15
+#define PC_TEMPERATURE_REG 0x19
 
 // Function prototypes for communication functions
 
@@ -33,25 +40,25 @@ typedef struct
             uint8_t init_failed :1;
             uint8_t estop :1;
         
-            //0x01 Last PC time
-            uint8_t last_pc_time;
+            //0x01 Last PC time (us)
+            uint32_t last_pc_time;
         
-            //0x02 PC Max Current
-            uint8_t pc_max_current;
+            //0x05 PC Max Current
+            float pc_max_current;
         
-            //0x03 BP Max Current
-            uint8_t bp_max_current;
+            //0x09 BP Max Current
+            float bp_max_current;
         
-            //0x04 PC Setpoint
-            uint8_t pc_setpoint;
+            //0x0D PC Setpoint
+            float pc_setpoint;
         
-            //0x05 PC Timeout
-            uint8_t pc_timeout;
+            //0x11 PC Timeout
+            float pc_timeout;
         
-            //0x06 Voltage
-            uint8_t voltage;
+            //0x15 Voltage
+            float voltage;
         
-            //0x07 Temperature
+            //0x19 Temperature
             uint8_t temperature;
         } output_registers;
 
@@ -68,20 +75,20 @@ typedef struct
 
         struct __attribute__((packed))
         {
-            //0x00-0x01 Tracking Current
-            uint16_t tracking_current;
+            //0x00-0x03 Tracking Current
+            float tracking_current;
         
-            //0x02 WD Timeout
-            uint8_t wd_timeout;
+            //0x04 WD Timeout (us)
+            uint32_t wd_timeout;
         
-            //0x03 Fault Clear
+            //0x08 Fault Clear
             uint8_t fault_clear;
         
-            //0x04 OC Threshold PC
-            uint8_t oc_threshold_pc;
+            //0x09 OC Threshold PC
+            float oc_threshold_pc;
         
-            //0x05 OC Threshold BP
-            uint8_t oc_threshold_bp;
+            //0x0D OC Threshold BP
+            float oc_threshold_bp;
         } input_registers;
     };
 } Input_MemMap_t;
