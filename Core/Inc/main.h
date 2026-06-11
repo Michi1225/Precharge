@@ -71,6 +71,7 @@ void Error_Handler(void);
 #define CS_BP_GPIO_Port GPIOF
 #define OC_Pin GPIO_PIN_0
 #define OC_GPIO_Port GPIOA
+#define OC_EXTI_IRQn EXTI0_IRQn
 #define nCLR_OC_Pin GPIO_PIN_1
 #define nCLR_OC_GPIO_Port GPIOA
 #define DRV_BP_Pin GPIO_PIN_2

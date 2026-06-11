@@ -37,12 +37,6 @@ HAL_StatusTypeDef cs_init()
     zero_offset_pc = offset_pc_avg; // Capture zero-current offset
     zero_offset_bp = offset_bp_avg; // Capture zero-current offset
 
-
-    // Set initial DAC output to zero
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, 0);
-    //Start DAC
-    if(HAL_DAC_Start(&hdac1, DAC_CHANNEL_2) != HAL_OK) return HAL_ERROR;
-
     return HAL_OK;
 }
 
@@ -88,11 +82,11 @@ void set_Imon()
                         : 0; // zero-offset correction
 
     // --- scaling 16-bit corrected ADC to 12-bit DAC (0..60A maps to 0..4095) ---
-    uint32_t dac_val = cs_bp_corrected * (DAC_MAX - DAC_MIN) / ADC_60A + DAC_MIN;
-    if(dac_val > DAC_MAX) dac_val = DAC_MAX;
-    if(dac_val < DAC_MIN) dac_val = DAC_MIN;
+    // uint32_t dac_val = cs_bp_corrected * (DAC_MAX - DAC_MIN) / ADC_60A + DAC_MIN;
+    // if(dac_val > DAC_MAX) dac_val = DAC_MAX;
+    // if(dac_val < DAC_MIN) dac_val = DAC_MIN;
 
-    // --- output to DAC channel 1 (right aligned 12-bit) ---
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dac_val);
+    // // --- output to DAC channel 1 (right aligned 12-bit) ---
+    // HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dac_val);
 }
 

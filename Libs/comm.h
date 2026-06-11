@@ -20,7 +20,31 @@
 #define PC_VOLTAGE_REG 0x15
 #define PC_TEMPERATURE_REG 0x19
 
+
+#define PC_TRACKING_CURRENT_MAX_VAL 5.0f
+#define PC_TRACKING_CURRENT_MIN_VAL 0.0f
+
+#define PC_WD_TIMEOUT_MAX_VAL 5E6
+#define PC_WD_TIMEOUT_MIN_VAL 0
+
+#define PC_CLR_FLT_VAL 0x5D
+
+#define PC_OC_THRESHOLD_PC_MAX_VAL 15.0f
+#define PC_OC_THRESHOLD_PC_MIN_VAL 5.0f
+
+#define PC_OC_THRESHOLD_BP_MAX_VAL 60.0f
+#define PC_OC_THRESHOLD_BP_MIN_VAL 0.0f
+
 // Function prototypes for communication functions
+
+typedef enum 
+{
+    PC_TRACKING_CURRENT = 0x00,
+    PC_WD_TIMEOUT = 0x04,
+    PC_CLR_FLT = 0x08,
+    PC_OC_THRESHOLD_PC = 0x09,
+    PC_OC_THRESHOLD_BP = 0x0D
+}PC_InputRegister_t;
 
 typedef struct
 {
@@ -53,7 +77,7 @@ typedef struct
             float pc_setpoint;
         
             //0x11 PC Timeout
-            float pc_timeout;
+            uint32_t pc_timeout;
         
             //0x15 Voltage
             float voltage;
@@ -105,6 +129,7 @@ typedef struct
 extern Communication_Handler_t commHandler;
 
 HAL_StatusTypeDef comm_init();
+void comm_reset_faults();
 
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode);
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c);

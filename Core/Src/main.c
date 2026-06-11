@@ -23,6 +23,8 @@
 #include "dac.h"
 #include "dma.h"
 #include "i2c.h"
+#include "stm32g4xx_hal_def.h"
+#include "stm32g4xx_hal_gpio.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -54,7 +56,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint8_t initialized = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -76,25 +78,24 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
-
+  
   /* MCU Configuration--------------------------------------------------------*/
-
+  
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
+  
   /* USER CODE BEGIN Init */
-
+  
   /* USER CODE END Init */
-
+  
   /* Configure the system clock */
   SystemClock_Config();
-
+  
   /* USER CODE BEGIN SysInit */
-
+  
   /* USER CODE END SysInit */
-
+  
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
@@ -112,56 +113,50 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_RESET);
   SWD_Init();
-  cs_init();
-  // controller_init();
-  comm_init();
+  HAL_StatusTypeDef error = HAL_OK;
+  error |= cs_init();
+  error |= controller_init();
+  error |= comm_init();
+
+
+  if(error != HAL_OK) 
+  {
+    commHandler.outputMemMap.output_registers.init_failed = 1;
+    // Indicate Init Complete
+    HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+    while(1)__NOP(); //TODO Improve this...
+  }else commHandler.outputMemMap.output_registers.ready = 1;
+
+  // Indicate Init Complete
+  initialized = 1;
+  HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
 
 
   while (1)
   {
-    ITM->PORT[0].u16 = commHandler.inputMemMap.input_registers.tracking_current; // Debug: Indicate current I2C communication state, adjust as needed
-
-    if(commHandler.inputMemMap.input_registers.tracking_current > 0x7F)
-    {
-      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-    }else{
+  
+    if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
       HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+      controller_stop();
+    }else{
+      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+      controller_start();
+      // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
     }
 
-    HAL_Delay(0);
-
-
-    // if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
-    //   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-    //   controller_stop();
-    // }else{
-    //   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-    //   controller_start();
-    //   // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
-    // }
-
-    // //ESTOP Clear
-    // if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
-    // {
-    //   HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
-    //   HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
-    // }else{
-    //   HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
-    //   HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
-    // }
-
-
-    // //OC LED
-
-    // if(HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin) == GPIO_PIN_SET)
-    // {
-    //   // HAL_GPIO_WritePin(OC_OUT_GPIO_Port, OC_OUT_Pin, GPIO_PIN_SET);
-    //   HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
-    //   //TODO: Set OC flag for I2C register
-    //   controller_stop();
-    // }
+    //ESTOP Clear
+    if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
+    {
+      HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
+    }else{
+      HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
+    }
 
     // //DEBUG SWO OUTPUT
     // float current_bp = TIM3->CCR4 / 169.0f;
@@ -238,6 +233,17 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     {
         set_Imon();
     }
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if(GPIO_Pin == OC_Pin && initialized == 1) 
+  {
+    controller_stop();
+    commHandler.outputMemMap.output_registers.hw_oc_fault = 1;
+    HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+
+  }
 }
 /* USER CODE END 4 */
 

@@ -16,6 +16,7 @@
 #define OUTPUT_MAX_I 1.0f
 #define CURRENT_SETPOINT 3.5f // Target precharge current in Amperes
 
+
 typedef struct {
     float Kp;       // Proportional gain
     float Ki;       // Integral gain
@@ -57,9 +58,9 @@ void PID_Reset(PIDController* pid);
 /**
  * @brief  Initialize the controller.
  * @param  None
- * @retval None
+ * @retval HAL_OK if successful
  */
-void controller_init();
+HAL_StatusTypeDef controller_init();
 
 /**
  * @brief  Start the controller. This starts the controller interrup routine.
