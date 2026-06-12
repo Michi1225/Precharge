@@ -126,7 +126,7 @@ int main(void)
     commHandler.outputMemMap.output_registers.init_failed = 1;
     // Indicate Init Complete
     HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
-    while(1)__NOP(); //TODO Improve this...
+    while(1)__NOP(); //TODO: Improve this...
   }else commHandler.outputMemMap.output_registers.ready = 1;
 
   // Indicate Init Complete
@@ -225,14 +225,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
   {
     controller_run();
   }
-}
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-    if(hadc->Instance == ADC2)
-    {
-        set_Imon();
-    }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)

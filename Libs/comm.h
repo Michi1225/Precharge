@@ -131,10 +131,43 @@ extern Communication_Handler_t commHandler;
 HAL_StatusTypeDef comm_init();
 void comm_reset_faults();
 
+
+/**
+ * @brief  I2C Address Match callback. Called when the slave address is matched.
+ *         This occurrs on START/REPEATED START conditions.
+ * @param  hi2c Pointer to I2C handle
+ * @param  TransferDirection Master to Slave or Slave to Master
+ * @param  AddrMatchCode Address match code
+ */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode);
+
+
+/**
+ * @brief  I2C Slave Receive Complete callback. Called when the slave has received one byte of data from the master.
+ * @param  hi2c Pointer to I2C handle
+ */
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c);
+
+/**
+ * @brief  I2C Slave Transmit Complete callback. Called when the slave has transmitted one byte of data to the master.
+ * @param  hi2c Pointer to I2C handle
+ */
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c);
+
+/**
+ * @brief  I2C Listen Complete callback. Called when the slave has completed listening for I2C communication.
+ *         This happens on a STOP condition
+ * @param  hi2c Pointer to I2C handle
+ */
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c);
+
+/*
+ * Example Master register write sequence:
+ * START => Register Address => master_tx_data[n] => LSB of CRC32(data)
+ *
+ * Example Master register read sequence:
+ * START => Register Address => REPEATED START => slave_tx_data[n]
+ */
 
 
 

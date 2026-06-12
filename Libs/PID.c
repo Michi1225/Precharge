@@ -21,9 +21,9 @@ uint8_t bypass = 0;
 
 static uint16_t oc_to_DAC(float oc)
 {
-    float voc = BP_SENSITIVITY * oc / 2.5f;
+    float voc = CS_SENSITIVITY * oc / 2.5f;
     float vdac = voc *(3.3f + 1.4f) / 1.4f;
-    return (uint16_t)(voc / get_vrefint() * 4096);
+    return (uint16_t)(vdac / get_vrefint() * 4096);
 }
 
 
@@ -77,7 +77,9 @@ HAL_StatusTypeDef controller_init()
 {
     run = 0;
     bypass = 0;
-    PID_SetSetpoint(&current_controller, CURRENT_SETPOINT);
+    PID_SetSetpoint(&current_controller, commHandler.inputMemMap.input_registers.tracking_current);
+    current_controller.wd_timeout = commHandler.inputMemMap.input_registers.wd_timeout;
+
     HAL_StatusTypeDef error = HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
     TIM3->CCR4 = 0;
     
@@ -105,26 +107,37 @@ void controller_start()
 {
     if(commHandler.outputMemMap.output_registers.ready == 0) return;
     
-    //Set OCP Threshold
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R
-            , oc_to_DAC(commHandler.inputMemMap.input_registers.oc_threshold_pc));
-    
-    // TODO: Controller config from I2C
-    PID_SetSetpoint(&current_controller, commHandler.inputMemMap.input_registers.tracking_current);
     if(run == 0 && bypass == 0) // Start the controller if not already running
     {
-        run = 1; // Set run flag
+        //Set OCP Threshold
+        HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R
+                , oc_to_DAC(commHandler.inputMemMap.input_registers.oc_threshold_pc));
+    
+        // Wait for DAC to settle
+        HAL_Delay(0);
+        
+        // Only update setpoint, WD Timeout, OC Threshold on controller start
+        // Does not allow changing those parameters on the fly, which could cause instability
+        PID_SetSetpoint(&current_controller, commHandler.inputMemMap.input_registers.tracking_current);
+        current_controller.wd_timeout = commHandler.inputMemMap.input_registers.wd_timeout;
+        current_controller.oc_threshold = commHandler.inputMemMap.input_registers.oc_threshold_pc;
+
+        // Set status flags
+        run = 1; // Internal Run flag
         commHandler.outputMemMap.output_registers.precharging = 1;
-        //TODO: set DAC
-        HAL_TIM_Base_Start_IT(&htim1); // Start timer interrupt for control loop
+
+        // Start Control loop
+        HAL_TIM_Base_Start_IT(&htim1);
+
+        // Reset Max recorded PC current
         commHandler.outputMemMap.output_registers.pc_max_current = 0.0f;
     }
 }
 
 void controller_run()
 {
-
-    float current = cs_get_pc_current();
+    // 
+    float current = cs_get_current();
 
     if(bypass == 1 && current > commHandler.outputMemMap.output_registers.bp_max_current) 
         commHandler.outputMemMap.output_registers.bp_max_current = current;
@@ -135,7 +148,7 @@ void controller_run()
         if(current > commHandler.outputMemMap.output_registers.pc_max_current)
             commHandler.outputMemMap.output_registers.pc_max_current = current;
 
-        if(current > commHandler.inputMemMap.input_registers.oc_threshold_pc)
+        if(current > current_controller.oc_threshold)
         {
             commHandler.outputMemMap.output_registers.sw_oc_fault = 1;
             commHandler.outputMemMap.output_registers.ready = 0;
@@ -162,7 +175,7 @@ void controller_run()
             bypass = 1;
             HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
             commHandler.outputMemMap.output_registers.done = 1;
-            commHandler.outputMemMap.output_registers.last_pc_time = 10 * current_controller.wd_counter;
+            commHandler.outputMemMap.output_registers.last_pc_time = (PERIOD * 1E6) * current_controller.wd_counter;
             commHandler.outputMemMap.output_registers.precharging = 0;
             HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
             //TODO: Reset DONE flag for I2C register on Disable
@@ -176,7 +189,7 @@ void controller_run()
 
         // Check for WD
         ++current_controller.wd_counter;
-        if(current_controller.wd_counter > commHandler.inputMemMap.input_registers.wd_timeout / 10)
+        if(current_controller.wd_counter > current_controller.wd_timeout / (PERIOD * 1E6))
         {
             //Disable controller
             HAL_TIM_Base_Stop_IT(&htim1);

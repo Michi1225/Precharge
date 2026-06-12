@@ -2,9 +2,10 @@
 
 #include "main.h"
 
-#define PC_SENSITIVITY 0.250f // V/A
-#define BP_SENSITIVITY 0.05f   // V/A
-#define CS_OFFSET 0.33f       // V
+#define CS_SENSITIVITY 0.05f   // V/A
+
+#define VREF_INT 1.21f
+#define RESOLUTION_16_BIT 65535.0f
 
 
 /**
@@ -19,35 +20,14 @@ HAL_StatusTypeDef cs_init();
  * @param  None
  * @retval Current in Amperes
  */
-float cs_get_pc_current();
-
-/**
- * @brief  Get the bypass current measurement.
- * @param  None
- * @retval Current in Amperes
- */
-float cs_get_bp_current();
-
-/**
- * @brief  Get the raw ADC measurement for precharge current.
- * @param  None
- * @retval Raw ADC value (16-bit ADC value)
- */
-uint32_t cs_get_pc_raw();
+float cs_get_current();
 
 
 /**
- * @brief  Get the internal reference voltage measurement.
+ * @brief  Get the ADC reference Voltage.
  * @param  None
- * @retval Vrefint voltage in Volts
+ * @retval Vadc reference voltage in Volts (typically around 3.3V, but can vary)
  */
 float get_vrefint();
-
-/**
- * @brief  Set the Imon DAC output based on the measured current. Full scale is 40A.
- * @param  None
- * @retval None
- */
-void set_Imon();
 
 

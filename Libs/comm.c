@@ -14,8 +14,10 @@ enum {
 uint8_t currentRegister = 0xFF; //Invalid register address, next write must be register address
 uint8_t input_data_raw[256]; // Buffer for received data, adjust size as needed
 uint8_t output_data_raw[256]; // Buffer for data to send, adjust size as needed
+uint8_t dummy = 0;
 
 uint8_t rxcnt = 0; // Counter for received bytes, adjust as needed
+uint8_t txcnt = 0; // Counter for transmitted bytes, adjust as needed
 
 
 Communication_Handler_t commHandler = {
@@ -53,19 +55,31 @@ HAL_StatusTypeDef comm_init()
 
 void comm_reset_faults() 
 {
+    // Only allow clearing faults if nEN is low and correct value is written to fault_clear register
     if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_RESET) return;
     if(commHandler.inputMemMap.input_registers.fault_clear != PC_CLR_FLT_VAL) return;
 
+    // Clear Overcurrent Faults
+    commHandler.outputMemMap.output_registers.sw_oc_fault = 0;
     commHandler.outputMemMap.output_registers.hw_oc_fault = 0;
+    HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
+    for(int i = 0; i < 1E5; ++i) __NOP();
+    HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
+    
+    // Clear E-Stop Fault
+    commHandler.outputMemMap.output_registers.estop = 0;
     HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
     for(int i = 0; i < 1E5; ++i) __NOP();
     HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
 
-    commHandler.outputMemMap.output_registers.sw_oc_fault = 0;
-
+    // Clear Watchdog Fault
     commHandler.outputMemMap.output_registers.wd_timeout_fault = 0;
     
-    commHandler.outputMemMap.output_registers.ready = 1;
+    // Set Ready flag unless init failed
+    if(commHandler.outputMemMap.output_registers.init_failed != 1)
+    {
+        commHandler.outputMemMap.output_registers.ready = 1;
+    }
 }
 
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
@@ -75,47 +89,61 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
   {
     if (TransferDirection == I2C_DIRECTION_TRANSMIT) // Master is writing to slave
     {
-      // Prepare to receive data from master
-      // You can set up a buffer and call HAL_I2C_Slave_Receive_DMA here
 
-      // Master writes register address.
-      if (commState == MASTER_REG) // Expecting register address
+      switch(commState)
       {
-        // Set up to receive the register address
-        HAL_I2C_Slave_Seq_Receive_IT(hi2c, &currentRegister, 1, I2C_NEXT_FRAME);
-      } else {
-        // Set up to receive data for the specified register
-        if (currentRegister + rxcnt < MAX_WRITE_ADDR) // Check if register address is valid
-        {
-            HAL_I2C_Slave_Seq_Receive_IT(hi2c, &input_data_raw[currentRegister + rxcnt], 1, I2C_NEXT_FRAME);
-        }
-        // Process received data and update the corresponding register value
+        case MASTER_REG:
+          // Expecting register address next
+          // Receive one byte of data => register address
+          HAL_I2C_Slave_Seq_Receive_IT(hi2c, &currentRegister, 1, I2C_NEXT_FRAME);
+          break;
+        case MASTER_WRITE:
+          //TODO: This case should not happen, but if it does just receive into dummy variable until STOP condition
+          // Master writes data for the previously specified register
+          if (currentRegister + rxcnt < MAX_WRITE_ADDR) // Check if register address is valid
+          {
+              HAL_I2C_Slave_Seq_Receive_IT(hi2c, &input_data_raw[currentRegister + rxcnt], 1, I2C_NEXT_FRAME); 
+          }
       }
-    } else // Master is reading from slave
+    } else // Repeated START means master wants to read the specified register
     {
-      // Prepare data to send to master
-      // You can set up a buffer with the data you want to send and call
-      // HAL_I2C_Slave_Transmit_DMA here
-      HAL_I2C_Slave_Seq_Transmit_IT(hi2c, output_data_raw + currentRegister, 1, I2C_NEXT_FRAME);
+      // Send 1 byte of data from the specified register address
+      if (currentRegister < MAX_READ_ADDR) // Check if register address is valid
+      {
+          commState = MASTER_READ;
+          HAL_I2C_Slave_Seq_Transmit_IT(hi2c, output_data_raw + currentRegister, 1, I2C_NEXT_FRAME);
+      }
     }
   }
 }
 
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-    // Handle completion of data reception from master
+    // One byte of data has been received from master
     if (hi2c == &I2C_HANDLER) // Check if it's the correct I2C instance
     {
-        if(commState == MASTER_REG) // Just received register address
+
+        switch(commState)
         {
-            commState = MASTER_WRITE; // Next reception will be data for the register
+            case MASTER_REG:
+                // Just received register address, stored in currentRegister
+                commState = MASTER_WRITE; // Next reception will be data for the register or repeated start for read
+                break;
+            case MASTER_WRITE:
+                // Master write data received
+                ++rxcnt; // Increment received byte count
+                break;
+        }
+        // Continue receiving data if needed
+        if (commState == MASTER_WRITE && currentRegister + rxcnt < MAX_WRITE_ADDR) // Check if next register address is valid
+        {
+            HAL_I2C_Slave_Seq_Receive_IT(hi2c, &input_data_raw[currentRegister + rxcnt], 1, I2C_NEXT_FRAME);
         }
         else
         {
-            // Master write data received
-            ++rxcnt; // Increment received byte count, adjust as needed
+            // Invalid Master Write, just receive into dummy variable until STOP condition
+            HAL_I2C_Slave_Seq_Receive_IT(hi2c, &dummy, 1, I2C_NEXT_FRAME);
         }
-        HAL_I2C_Slave_Seq_Receive_IT(hi2c, &input_data_raw[currentRegister + rxcnt], 1, I2C_NEXT_FRAME); // Continue receiving data if needed
     }
 }
 
@@ -124,8 +152,19 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
     // Handle completion of data transmission to master
     if (hi2c == &I2C_HANDLER) // Check if it's the correct I2C instance
     {
-        // Transmission complete, you can perform any necessary cleanup or prepare for the next transmission
-        HAL_I2C_Slave_Seq_Transmit_IT(hi2c, output_data_raw + currentRegister, 1, I2C_NEXT_FRAME); // Continue transmitting data if needed
+        // One Byte of data has been transmitted to master from output_data_raw[currentRegister]
+        // If more data needs to be sent for this register, continue transmitting
+        if (commState == MASTER_READ && currentRegister + txcnt < MAX_READ_ADDR) // Check if next register address is valid
+        {
+            ++txcnt; // Increment transmitted byte count
+            HAL_I2C_Slave_Seq_Transmit_IT(hi2c, output_data_raw + currentRegister + txcnt, 1, I2C_NEXT_FRAME);
+        }else
+        {
+            // Invalid Master Read, just send dummy data until STOP condition
+            dummy = 0;
+            HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &dummy, 1, I2C_NEXT_FRAME);
+             
+        }
     }
 }
 uint32_t xfercnt = 0;
@@ -143,13 +182,8 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
             uint32_t crc = HAL_CRC_Calculate(&hcrc, &input_data_raw[currentRegister], rxcnt - 1); // Example CRC calculation, adjust as needed
             if((crc & 0x000000FF) == input_data_raw[currentRegister + rxcnt - 1])
             {
-                xfercnt++;
-                ITM->PORT[2].u32 = xfercnt;
                 for(int index = currentRegister; index < currentRegister + rxcnt - 1;)
                 {
-                    // Update the corresponding register value based on received data
-                    // This is where you would parse input_data_raw and update your inputMemMap accordingly
-
                     PC_InputRegister_t reg = (PC_InputRegister_t) index;
                     float input_value_f32;
                     uint32_t input_value_u32;
@@ -210,9 +244,6 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
                         break;
                     }
                 }
-            }else
-            {
-                __NOP();
             }
         }
         else if(commState == MASTER_READ) // Just finished transmitting data to master
@@ -222,8 +253,10 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
         }
         commState = MASTER_REG; // Reset to expect register address again
         rxcnt = 0; // Reset received byte count for next communication
+        txcnt = 0; // Reset transmitted byte count for next communication
         HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_RESET); // Master has read 
 
+        // Rearm Listen mode to be ready for next communication
         HAL_I2C_EnableListen_IT(hi2c);
     }
 }
