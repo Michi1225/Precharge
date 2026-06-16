@@ -29,6 +29,8 @@
 
 #define PC_CLR_FLT_VAL 0x5D
 
+#define PC_FLT_MASK 0b11111000
+
 #define PC_OC_THRESHOLD_PC_MAX_VAL 15.0f
 #define PC_OC_THRESHOLD_PC_MIN_VAL 5.0f
 

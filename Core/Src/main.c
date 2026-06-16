@@ -131,6 +131,7 @@ int main(void)
 
   // Indicate Init Complete
   initialized = 1;
+
   HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
@@ -139,24 +140,16 @@ int main(void)
   while (1)
   {
   
-    if((HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_SET )|| (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)){
-      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-      controller_stop();
-    }else{
-      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    // Check for Start/Stop Condition
+    if((commHandler.outputMemMap.raw_output_data[0] & PC_FLT_MASK) == 0
+       && (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_RESET))
+    {
       controller_start();
       // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
     }
 
-    //ESTOP Clear
-    if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
-    {
-      HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_RESET);
-      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_RESET);
-    }else{
-      HAL_GPIO_WritePin(nCLR_ESTOP_GPIO_Port, nCLR_ESTOP_Pin, GPIO_PIN_SET);
-      HAL_GPIO_WritePin(nCLR_OC_GPIO_Port, nCLR_OC_Pin, GPIO_PIN_SET);
-    }
+
+
 
     // //DEBUG SWO OUTPUT
     // float current_bp = TIM3->CCR4 / 169.0f;
@@ -229,11 +222,27 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  if(GPIO_Pin == OC_Pin && initialized == 1) 
+  if(initialized == 1)
   {
-    controller_stop();
-    commHandler.outputMemMap.output_registers.hw_oc_fault = 1;
-    HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+    switch(GPIO_Pin)
+    {
+      case OC_Pin:
+        controller_stop();
+        commHandler.outputMemMap.output_registers.hw_oc_fault = 1;
+        HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+        break;
+  
+      case ESTOP_Pin:
+        controller_stop();
+        commHandler.outputMemMap.output_registers.estop = 1;
+        HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+        break;
+      case nEN_Pin:
+        controller_stop();
+        break;  
+      default:
+        break;
+    }
 
   }
 }

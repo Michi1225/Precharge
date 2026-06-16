@@ -95,9 +95,9 @@ HAL_StatusTypeDef controller_init()
 
 
     //Controller ready
-    // HAL_GPIO_WritePin(RDY_GPIO_Port, RDY_Pin, GPIO_PIN_RESET); //RDY is now WD TIMEOUT
-    // HAL_GPIO_WritePin(DONE_GPIO_Port, DONE_Pin, GPIO_PIN_RESET);
-    //TODO: Set those flags in I2C register instead of GPIO
+
+    commHandler.outputMemMap.output_registers.hw_oc_fault = HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin);
+    commHandler.outputMemMap.output_registers.estop = HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin);
 
     return error;
     
@@ -131,6 +131,8 @@ void controller_start()
 
         // Reset Max recorded PC current
         commHandler.outputMemMap.output_registers.pc_max_current = 0.0f;
+
+        HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     }
 }
 
@@ -220,6 +222,8 @@ void controller_stop()
         HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
         commHandler.outputMemMap.output_registers.precharging = 0;
         commHandler.outputMemMap.output_registers.done = 0;
+
+        HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
     }
 }

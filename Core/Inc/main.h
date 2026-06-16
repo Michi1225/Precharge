@@ -86,8 +86,10 @@ void Error_Handler(void);
 #define ALERT_GPIO_Port GPIOA
 #define nEN_Pin GPIO_PIN_12
 #define nEN_GPIO_Port GPIOA
+#define nEN_EXTI_IRQn EXTI15_10_IRQn
 #define ESTOP_Pin GPIO_PIN_15
 #define ESTOP_GPIO_Port GPIOA
+#define ESTOP_EXTI_IRQn EXTI15_10_IRQn
 #define nCLR_ESTOP_Pin GPIO_PIN_4
 #define nCLR_ESTOP_GPIO_Port GPIOB
 #define DRV_PC_Pin GPIO_PIN_7
