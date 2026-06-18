@@ -23,8 +23,6 @@
 #include "dac.h"
 #include "dma.h"
 #include "i2c.h"
-#include "stm32g4xx_hal_def.h"
-#include "stm32g4xx_hal_gpio.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -79,23 +77,23 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
   /* USER CODE END 1 */
-  
+
   /* MCU Configuration--------------------------------------------------------*/
-  
+
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-  
+
   /* USER CODE BEGIN Init */
   
   /* USER CODE END Init */
-  
+
   /* Configure the system clock */
   SystemClock_Config();
-  
+
   /* USER CODE BEGIN SysInit */
   
   /* USER CODE END SysInit */
-  
+
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
@@ -133,20 +131,26 @@ int main(void)
   initialized = 1;
 
   HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-
-
-
+  // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+  
+  
+  
   while (1)
   {
-  
+    
     // Check for Start/Stop Condition
     if((commHandler.outputMemMap.raw_output_data[0] & PC_FLT_MASK) == 0
-       && (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_RESET))
+    && (HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_RESET))
     {
       controller_start();
       // HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
+      // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     }
+    
+
+    volatile uint8_t en = HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin);
+    volatile uint8_t estop = HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin);
+    volatile uint8_t oc = HAL_GPIO_ReadPin(OC_GPIO_Port, OC_Pin);
 
 
 
@@ -154,8 +158,9 @@ int main(void)
     // //DEBUG SWO OUTPUT
     // float current_bp = TIM3->CCR4 / 169.0f;
     // memcpy(&(ITM->PORT[1].u8), &bypass, sizeof(bypass));
-    // float current = cs_get_pc_current();
+    // float current = cs_get_current();
     // memcpy(&(ITM->PORT[0].u32), &current, sizeof(current));
+    // ITM->PORT[1].u8 = commHandler.outputMemMap.output_registers.precharging;
     // for(int i = 0; i < 5000; i++);
 
     /* USER CODE END WHILE */
@@ -262,8 +267,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

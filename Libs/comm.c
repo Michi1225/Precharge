@@ -1,5 +1,6 @@
 #include "comm.h"  
 #include "crc.h"
+#include "stm32g4a1xx.h"
 #include "stm32g4xx_hal_gpio.h"
 #include "stm32g4xx_hal_i2c.h"
 
@@ -55,10 +56,6 @@ HAL_StatusTypeDef comm_init()
 
 void comm_reset_faults() 
 {
-    // Only allow clearing faults if nEN is low and correct value is written to fault_clear register
-    if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_RESET) return;
-    if(commHandler.inputMemMap.input_registers.fault_clear != PC_CLR_FLT_VAL) return;
-
     // Clear Overcurrent Faults
     commHandler.outputMemMap.output_registers.sw_oc_fault = 0;
     commHandler.outputMemMap.output_registers.hw_oc_fault = 0;
@@ -87,9 +84,10 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
   // Handle I2C address match event
   if (hi2c == &I2C_HANDLER) // Check if it's the correct I2C instance
   {
-    if (TransferDirection == I2C_DIRECTION_TRANSMIT) // Master is writing to slave
-    {
-
+      if (TransferDirection == I2C_DIRECTION_TRANSMIT) // Master is writing to slave
+      {
+          
+          
       switch(commState)
       {
         case MASTER_REG:
@@ -104,6 +102,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
           {
               HAL_I2C_Slave_Seq_Receive_IT(hi2c, &input_data_raw[currentRegister + rxcnt], 1, I2C_NEXT_FRAME); 
           }
+          break;
       }
     } else // Repeated START means master wants to read the specified register
     {
@@ -111,6 +110,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
       if (currentRegister < MAX_READ_ADDR) // Check if register address is valid
       {
           commState = MASTER_READ;
+          memcpy(output_data_raw, commHandler.outputMemMap.raw_output_data, MAX_READ_ADDR);
           HAL_I2C_Slave_Seq_Transmit_IT(hi2c, output_data_raw + currentRegister, 1, I2C_NEXT_FRAME);
       }
     }
@@ -135,7 +135,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
                 break;
         }
         // Continue receiving data if needed
-        if (commState == MASTER_WRITE && currentRegister + rxcnt < MAX_WRITE_ADDR) // Check if next register address is valid
+        if (commState == MASTER_WRITE && currentRegister + (rxcnt -1) <= MAX_WRITE_ADDR + 1) // Check if next register address is valid (+1 for CRC Byte)
         {
             HAL_I2C_Slave_Seq_Receive_IT(hi2c, &input_data_raw[currentRegister + rxcnt], 1, I2C_NEXT_FRAME);
         }
@@ -179,6 +179,9 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
         if(commState == MASTER_WRITE) // Just finished receiving data from master
         {
             // Validate receive Data & copy to register if valid
+
+            
+            
             uint32_t crc = HAL_CRC_Calculate(&hcrc, &input_data_raw[currentRegister], rxcnt - 1); // Example CRC calculation, adjust as needed
             if((crc & 0x000000FF) == input_data_raw[currentRegister + rxcnt - 1])
             {
@@ -209,13 +212,14 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
                         break;
                     
                     case PC_CLR_FLT:
-                        if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_SET)
+                        if(HAL_GPIO_ReadPin(nEN_GPIO_Port, nEN_Pin) == GPIO_PIN_RESET)
                         {
                             index++;
                             break;
                         }
                         if (input_data_raw[index] == PC_CLR_FLT_VAL)
                         {
+
                             comm_reset_faults();
                         }
                         index++;

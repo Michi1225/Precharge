@@ -5,8 +5,8 @@
 #define ENABLE_PORT0 1
 #define ENABLE_PORT1 1
 #define ENABLE_PORT2 1
-#define ENABLE_PORT3 1
-#define ENABLE_PORT4 1
+#define ENABLE_PORT3 0
+#define ENABLE_PORT4 0
 #define ENABLE_PORT5 0
 #define ENABLE_PORT6 0
 #define ENABLE_PORT7 0
