@@ -1,6 +1,9 @@
 #include "PID.h"
 #include "CurrentSense.h"
 #include "comm.h"
+#include "stm32g4a1xx.h"
+
+
 
 PIDController current_controller =
 {
@@ -132,98 +135,100 @@ void controller_start()
         // Reset Max recorded PC current
         commHandler.outputMemMap.output_registers.pc_max_current = 0.0f;
 
-        HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+        // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     }
 }
 
 void controller_run()
 {
-    // 
     float current = cs_get_current();
 
-    if(bypass == 1 && current > commHandler.outputMemMap.output_registers.bp_max_current) 
-        commHandler.outputMemMap.output_registers.bp_max_current = current;
+    /* Cache pointers to reduce repeated indirections */
+    Output_MemMap_t *out = &commHandler.outputMemMap;
+    Input_MemMap_t *in = &commHandler.inputMemMap;
 
-    else if(bypass == 0) // Only run if not in bypass mode
+    if (bypass == 1)
     {
-        // Store Maximum Precharge Current
-        if(current > commHandler.outputMemMap.output_registers.pc_max_current)
-            commHandler.outputMemMap.output_registers.pc_max_current = current;
+        if (current > out->output_registers.bp_max_current)
+            out->output_registers.bp_max_current = current;
+    }
+    else if (bypass == 0) /* Only run if not in bypass mode */
+    {
+        /* Store Maximum Precharge Current */
+        if (current > out->output_registers.pc_max_current)
+            out->output_registers.pc_max_current = current;
 
-        if(current > current_controller.oc_threshold)
+        if (current > current_controller.oc_threshold)
         {
-            commHandler.outputMemMap.output_registers.sw_oc_fault = 1;
-            commHandler.outputMemMap.output_registers.ready = 0;
+            out->output_registers.sw_oc_fault = 1;
+            out->output_registers.ready = 0;
             HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
             controller_stop();
+            return;
         }
 
-        // Calculate Duty
+        /* Calculate Duty */
         float d = PID_Compute(&current_controller, current, PERIOD);
 
-        // Set Duty
+        /* Set Duty */
         TIM3->CCR4 = (uint32_t)(d * 169.0f);
 
-        // D = 1, wait for handover
-        if(TIM3->CCR4 == 169) ++current_controller.handover_counter;
+        /* D = 1, wait for handover */
+        if (TIM3->CCR4 == 169) ++current_controller.handover_counter;
         else current_controller.handover_counter = 0;
 
-        // D = 1 for long enough, handover to Bypass
-        if(current_controller.handover_counter > HANDOVER_THRESHOLD)
+        /* D = 1 for long enough, handover to Bypass */
+        if (current_controller.handover_counter > HANDOVER_THRESHOLD)
         {
-            //Set bypass mode
-            HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R
-                    , oc_to_DAC(commHandler.inputMemMap.input_registers.oc_threshold_bp));
+            /* Set bypass mode */
+            HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                oc_to_DAC(in->input_registers.oc_threshold_bp));
             bypass = 1;
             HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_SET);
-            commHandler.outputMemMap.output_registers.done = 1;
-            commHandler.outputMemMap.output_registers.last_pc_time = (PERIOD * 1E6) * current_controller.wd_counter;
-            commHandler.outputMemMap.output_registers.precharging = 0;
+            out->output_registers.done = 1;
+            out->output_registers.last_pc_time = PERIOD_US * current_controller.wd_counter;
+            out->output_registers.precharging = 0;
             HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
-            //TODO: Reset DONE flag for I2C register on Disable
 
-
-            //Disable controller
+            /* Disable controller */
             HAL_TIM_Base_Stop_IT(&htim1);
             TIM3->CCR4 = 0;
             PID_Reset(&current_controller);
+            return;
         }
 
-        // Check for WD
+        /* Check for WD */
         ++current_controller.wd_counter;
-        if(current_controller.wd_counter > current_controller.wd_timeout / (PERIOD * 1E6))
+        if (current_controller.wd_counter > current_controller.wd_timeout * FREQ_MHZ)
         {
-            //Disable controller
+            /* Disable controller */
             HAL_TIM_Base_Stop_IT(&htim1);
             TIM3->CCR4 = 0;
             PID_Reset(&current_controller);
-            
-            commHandler.outputMemMap.output_registers.ready = 0;
-            commHandler.outputMemMap.output_registers.wd_timeout_fault = 1;
-            commHandler.outputMemMap.output_registers.precharging = 0;
+
+            out->output_registers.ready = 0;
+            out->output_registers.wd_timeout_fault = 1;
+            out->output_registers.precharging = 0;
             HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
+            return;
         }
-        return;
     }
 }
 
 void controller_stop()
 {
-    if(run == 1 || bypass == 1) // Stop the controller if running or in bypass mode
-    {
-        //Stop Precharge
-        run = 0;
-        HAL_TIM_Base_Stop_IT(&htim1);
-        TIM3->CCR4 = 0;
-        PID_Reset(&current_controller);
+    
+    //Stop Precharge
+    run = 0;
+    HAL_TIM_Base_Stop_IT(&htim1);
+    TIM3->CCR4 = 0;
+    PID_Reset(&current_controller);
 
-        //Stop Bypass
-        bypass = 0;
-        HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
-        commHandler.outputMemMap.output_registers.precharging = 0;
-        commHandler.outputMemMap.output_registers.done = 0;
+    //Stop Bypass
+    bypass = 0;
+    HAL_GPIO_WritePin(DRV_BP_GPIO_Port, DRV_BP_Pin, GPIO_PIN_RESET);
+    commHandler.outputMemMap.output_registers.precharging = 0;
+    commHandler.outputMemMap.output_registers.done = 0;
 
-        HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-
-    }
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 }

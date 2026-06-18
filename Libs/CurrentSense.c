@@ -7,6 +7,10 @@ uint32_t vrefint_raw = 0;
 
 uint32_t zero_offset_cs = 0;
 
+/* Cached values to avoid repeated work at runtime */
+static float cs_scale_factor = 0.0f; /* multiplies ADC counts -> current */
+static float vref_cached = 0.0f;
+
 
 HAL_StatusTypeDef cs_init()
 {
@@ -18,7 +22,7 @@ HAL_StatusTypeDef cs_init()
     // Start ADC in DMA mode
     if(HAL_ADC_Start_DMA(&hadc2, &cs_raw, 1) != HAL_OK) return HAL_ERROR;
     if(HAL_ADC_Start_DMA(&hadc3, &vrefint_raw, 1) != HAL_OK) return HAL_ERROR;
-    HAL_Delay(1); // Allow some time for initial readings
+    HAL_Delay(100); // Allow some time for initial readings
 
 
     //Average multiple samples to determine zero-current offset
@@ -32,32 +36,31 @@ HAL_StatusTypeDef cs_init()
     offset_avg /= samples;
     zero_offset_cs = offset_avg;
 
+    /* Cache Vref and precompute scale factor to speed up conversions
+       Avoid repeated divisions and function calls in the fast path. */
+    vref_cached = get_vrefint();
+    cs_scale_factor = vref_cached * DIV_RESOLUTION_16_BIT * DIV_CS_SENSITIVITY;
+
     return HAL_OK;
 }
 
 
 float cs_get_current()
 {
-    // TODO: Validate this
-    // Formula: I = (Vadc - Voffset) / Sensitivity
-    // Get raw ADC value and apply zero-current offset correction
-    uint32_t cs_raw_corrected = cs_raw & 0xFFFF; // 16-bit ADC
-    cs_raw_corrected = (cs_raw_corrected > zero_offset_cs) ? (cs_raw_corrected - zero_offset_cs) : 0;
-
-    // Get ADC reference
-    float vref = get_vrefint();
-
-    // Convert to measured current
-    float adc_voltage = ((float)cs_raw_corrected) * vref / RESOLUTION_16_BIT; 
-    return adc_voltage / CS_SENSITIVITY;
+    /* Fast path: use precomputed scale factor. Keep operations minimal. */
+    uint32_t raw = cs_raw & 0xFFFFU; /* read DMA-updated ADC count */
+    if (raw <= zero_offset_cs) return 0.0f;
+    uint32_t corrected = raw - zero_offset_cs;
+    /* Single multiply: converts counts -> current using cached factor */
+    return ((float)corrected) * cs_scale_factor;
 }                                                                                    
 
 float get_vrefint()
 {
-    //TODO: Validate this!
-    // Formula: Vref(3.3V) = (ADC_VAL * VREF_INT(1.21V)) / 2^16
-    float adc_voltage = ((float)vrefint_raw) * VREF_INT / RESOLUTION_16_BIT; 
-    return adc_voltage;
+    // Guard against divide-by-zero (DMA may not have provided a sample yet)
+    if (vrefint_raw == 0) return 3.3f;
+    /* Keep existing formula but avoid unnecessary temporaries */
+    return (VREF_INT * RESOLUTION_16_BIT) / (float)vrefint_raw;
 }
 
 

@@ -3,9 +3,11 @@
 #include "main.h"
 
 #define CS_SENSITIVITY 0.05f   // V/A
+#define DIV_CS_SENSITIVITY 20.0f // A/V
 
 #define VREF_INT 1.21f
 #define RESOLUTION_16_BIT 65535.0f
+#define DIV_RESOLUTION_16_BIT 0.0000152590219f
 
 
 /**

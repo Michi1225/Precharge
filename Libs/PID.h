@@ -8,6 +8,10 @@
 #define HANDOVER_THRESHOLD 5000 // Threshold to switch to bypass mode, 50ms
 
 #define PERIOD 1E-5f //10us
+#define PERIOD_US 10.0f
+#define FREQ 1E5f // 100kHz
+#define FREQ_MHZ 0.1f
+
 #define KP 0.01f
 #define KI 5.0f
 #define KD 0.00f
