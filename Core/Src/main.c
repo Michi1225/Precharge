@@ -244,6 +244,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         break;
       case nEN_Pin:
         controller_stop();
+        HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
         break;  
       default:
         break;
