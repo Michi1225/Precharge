@@ -191,8 +191,8 @@ void controller_run()
             HAL_GPIO_WritePin(INT_GPIO_Port, INT_Pin, GPIO_PIN_SET);
 
             /* Disable controller */
-            HAL_TIM_Base_Stop_IT(&htim1);
-            TIM3->CCR4 = 0;
+            // HAL_TIM_Base_Stop_IT(&htim1);
+            // TIM3->CCR4 = 0;
             PID_Reset(&current_controller);
             return;
         }
