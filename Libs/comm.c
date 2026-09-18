@@ -207,6 +207,7 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
                         if(input_value_u32 > PC_WD_TIMEOUT_MIN_VAL && input_value_u32 < PC_WD_TIMEOUT_MAX_VAL)
                         {
                             memcpy((void*)(commHandler.inputMemMap.raw_input_data + index), &input_value_u32, sizeof(input_value_u32));
+                            commHandler.outputMemMap.output_registers.pc_timeout = commHandler.inputMemMap.input_registers.wd_timeout;
                         }
                         index += sizeof(input_value_u32);
                         break;
@@ -230,6 +231,7 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
                         if(input_value_f32 > PC_OC_THRESHOLD_PC_MIN_VAL && input_value_f32 < PC_OC_THRESHOLD_PC_MAX_VAL)
                         {
                             memcpy((void*)(commHandler.inputMemMap.raw_input_data + index), &input_value_f32, sizeof(input_value_f32));
+                            commHandler.outputMemMap.output_registers.oc_threshold_pc = commHandler.inputMemMap.input_registers.oc_threshold_pc;
                         }
                         index += sizeof(input_value_f32);
                         break;
@@ -239,6 +241,7 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
                         if(input_value_f32 > PC_OC_THRESHOLD_BP_MIN_VAL && input_value_f32 < PC_OC_THRESHOLD_BP_MAX_VAL)
                         {
                             memcpy((void*)(commHandler.inputMemMap.raw_input_data + index), &input_value_f32, sizeof(input_value_f32));
+                            commHandler.outputMemMap.output_registers.oc_threshold_bp = commHandler.inputMemMap.input_registers.oc_threshold_bp;
                         }
                         index += sizeof(input_value_f32);
                         break;

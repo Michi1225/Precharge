@@ -86,6 +86,12 @@ typedef struct
         
             //0x19 Temperature
             uint8_t temperature;
+
+            //0x20 OC Threshold PC
+            float oc_threshold_pc;
+
+            //0x24 OC Threshold BP
+            float oc_threshold_bp;
         } output_registers;
 
 
