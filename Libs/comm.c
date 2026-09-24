@@ -45,7 +45,9 @@ Communication_Handler_t commHandler = {
         .output_registers.pc_setpoint = 1.0f,
         .output_registers.pc_timeout = 1E6,
         .output_registers.voltage = 0.0f,
-        .output_registers.temperature = 25
+        .output_registers.temperature = 25,
+        .output_registers.oc_threshold_pc = 10.0f,
+        .output_registers.oc_threshold_bp = 50.0f,
     }
 };
 

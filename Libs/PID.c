@@ -26,7 +26,9 @@ static uint16_t oc_to_DAC(float oc)
 {
     float voc = CS_SENSITIVITY * oc / 2.5f;
     float vdac = voc *(3.3f + 1.4f) / 1.4f;
-    return (uint16_t)(vdac / get_vrefint() * 4096);
+    uint16_t ret = (uint16_t)(vdac / get_vrefint() * 4096);
+    if(ret > 4095) return 4095;
+    return ret;
 }
 
 
